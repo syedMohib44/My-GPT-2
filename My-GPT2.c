@@ -237,7 +237,7 @@ void multilayer_perceptron(float *input, float *output1, float *output2, float *
     GELU(output2, gelu_out2, B * T * C);
 }
 
-void mlp_backprop(float *input, float *dinput, struct ip_op *io, struct MLP *mlp, struct dMlp *dmlp, int B, int T, int C) {
+void mlp_backprop(float *input, float *dinput, struct Input_Output *io, struct MLP *mlp, struct dMlp *dmlp, int B, int T, int C) {
     gelu_backprop(io->mlp_l2_out, io->dmlp_l2_out, io->dgelu_out2, B * T * C);
     matrix_mul_backprop(io->gelu_out1, mlp->c_proj_weight, io->dmlp_l2_out, io->dgelu_out1, dmlp->d_proj_weight, dmlp->d_proj_bias, T, 4 * C, C, B);
     gelu_backprop(io->mlp_l1_out, io->dmlp_l1_out, io->dgelu_out1, B * T * 4 * C);
@@ -245,7 +245,7 @@ void mlp_backprop(float *input, float *dinput, struct ip_op *io, struct MLP *mlp
 }
 
 
-void causal_attention(float *input, float *output, struct AttentionBlock *attn, struct ip_op *io, int B, int T, int C, int num_heads)
+void causal_attention(float *input, float *output, struct AttentionBlock *attn, struct Input_Output *io, int B, int T, int C, int num_heads)
 {
     assert(C % num_heads == 0);
     int head_size = C / num_heads;
@@ -311,7 +311,7 @@ void causal_attention(float *input, float *output, struct AttentionBlock *attn, 
     // one of the most annoying and fun things to code
 }
 
-void causal_attention_backprop(struct AttentionBlock *attn, struct dAttentionBlock *dAtt, struct ip_op *io, int B, int T, int C, int num_heads) {
+void causal_attention_backprop(struct AttentionBlock *attn, struct dAttentionBlock *dAtt, struct Input_Output *io, int B, int T, int C, int num_heads) {
 
     float *dattn = (float *)calloc(B * T * C, sizeof(float));
     int N = num_heads;
@@ -421,7 +421,7 @@ void loss_backward(float *logits, int *targets, float *dlogits, int B, int T, in
     }
 }
 
-void gpt_forward(struct NetworkConfig *config, struct gpt *model, struct ip_op *io[], struct foo *f){
+void gpt_forward(struct NetworkConfig *config, struct Gpt *model, struct Input_Output *io[], struct LayerNormContext *f){
     int B = config->batch_size;
     int T = config->seq_len;
     int C = config->d_model;
@@ -457,7 +457,7 @@ void gpt_forward(struct NetworkConfig *config, struct gpt *model, struct ip_op *
     layernorm(io[n - 1]->res_out2, f->fln_output, f->fln_mean, model->lnf, f->fln_std, B, T, C, 1);
     matrix_mul(f->fln_output, model->final_layer->final_weight, model->final_layer->final_bias, f->fl_output, T, C, config->vocab_size, B);
 }
-void gpt_backward(struct NetworkConfig *config, struct gpt *model, struct dGpt *dmodel, struct ip_op *io[], struct foo *f){
+void gpt_backward(struct NetworkConfig *config, struct Gpt *model, struct dGpt *dmodel, struct Input_Output *io[], struct LayerNormContext *f){
     int B = config->batch_size;
     int T = config->seq_len;
     int C = config->d_model;
@@ -607,7 +607,7 @@ void update_grad_stats(float *grad, int size, float *max_grad, float *avg_grad, 
     }
 }
 
-void gpt_step(struct NetworkConfig *config, struct gpt *model, struct dGpt *dmodel, struct ip_op *io[], struct foo *f, int total_steps ,int step_no){
+void gpt_step(struct NetworkConfig *config, struct Gpt *model, struct dGpt *dmodel, struct Input_Output *io[], struct LayerNormContext *f, int total_steps ,int step_no){
     int B = config->batch_size;
     int T = config->seq_len;
     int C = config->d_model;
@@ -724,7 +724,7 @@ void xavier_normal_init(float *tensor, int fan_in, int fan_out, int flag, float 
     }
 }
 
-void init_gpt(struct gpt *model, int T, int C, int V, int N, int NUM_LAYERS){
+void init_gpt(struct Gpt *model, int T, int C, int V, int N, int NUM_LAYERS){
     float init_scale = 0.02f;  // Reduced initial scale
     xavier_normal_init(model->embedding->inp_emb, V, C, 0, init_scale);
     xavier_normal_init(model->embedding->pos_emb, T, C, 0, init_scale);
@@ -751,7 +751,7 @@ void init_gpt(struct gpt *model, int T, int C, int V, int N, int NUM_LAYERS){
 void _zero_grad(struct dGpt *dmodel, size_t dsize){
     memset(dmodel->dembedding->dinp_emb, 0, dsize);
 }
-void reset_io_foo(struct ip_op *io[], struct foo *f, size_t ip_op_size, size_t foo_size){
+void reset_io_foo(struct Input_Output *io[], struct LayerNormContext *f, size_t ip_op_size, size_t foo_size){
     memset(f->input, 0, foo_size);
     memset(io[0]->dec_ip, 0, ip_op_size);
 }
@@ -823,18 +823,18 @@ int* get_cache(const char *filename, int *num_indices) {
 int main() {
     struct NetworkConfig config = {4, 32, 8, 128, 50304, 8};
     int B = config.batch_size, T = config.seq_len, C = config.d_model, V = config.vocab_size, N = config.num_heads, NUM_LAYERS = config.n_layers;
-    struct gpt *model = (struct gpt *)malloc(sizeof(struct gpt));
+    struct Gpt *model = (struct Gpt *)malloc(sizeof(struct Gpt));
     struct dGpt *dmodel = (struct dGpt *)malloc(sizeof(struct dGpt));
-    struct ip_op **io = (struct ip_op **)malloc(NUM_LAYERS * sizeof(struct ip_op *));
-    struct foo *f = (struct foo *)malloc(sizeof(struct foo));
+    struct Input_Output **io = (struct Input_Output **)malloc(NUM_LAYERS * sizeof(struct Input_Output *));
+    struct LayerNormContext *f = (struct LayerNormContext *)malloc(sizeof(struct LayerNormContext));
     size_t gpt_size = calculate_total_gpt_size(B, T, C, V);
     size_t dgpt_size = calculate_total_dgpt_size(T, C, V);
     size_t ip_op_size = calculate_ip_op_size(B, T, C, NUM_LAYERS, N);
     size_t foo_size = calculate_foo_size(B, T, C);
-    map_gpt(model, "gpt.bin", B, T, C, V);
+    map_gpt(model, "Gpt.bin", B, T, C, V);
     map_dgpt(dmodel, "dgpt_model.bin", T, C, V);
-    map_ip_op_array(io, "ip_op.bin", B, T, C, NUM_LAYERS, N);
-    map_foo(f, "foo.bin", B, T, C);
+    map_ip_op_array(io, "Input_Output.bin", B, T, C, NUM_LAYERS, N);
+    map_foo(f, "LayerNormContext.bin", B, T, C);
     init_gpt(model, T, C, V, N, NUM_LAYERS);
     _zero_grad(dmodel, dgpt_size);
     reset_io_foo(io, f, ip_op_size, foo_size);
