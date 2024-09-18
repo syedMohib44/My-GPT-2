@@ -1,8 +1,8 @@
 # GPT-2 Written in Plain C
 
-<img src="https://img.shields.io/badge/ChatGPT-74aa9c?style=for-the-badge&logo=openai&logoColor=white" />
+[![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://github.com/sindresorhus/awesome)  
 
-![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
+<img src="https://img.shields.io/badge/ChatGPT-74aa9c?style=for-the-badge&logo=openai&logoColor=white" /> ![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
 
 The primary goal of this project was to gain a deeper understanding of how complex systems are built from the ground up. I hope this project can inspire others to realize that they, too, can build anything from scratch. I looked back in my life and realized I have implemented Multithreaded Neural Net in C++ which motivated me to further makes use of that implemenation by me Muheeb Uddin [main.cpp](https://github.com/syedMohib44/Multithread_NeuralNetwork)
