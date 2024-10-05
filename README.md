@@ -25,6 +25,15 @@ To improve performance, the following compiler flags were used:
 - `-funroll-loops`: Unroll loops to potentially speed up execution
 - `-fopenmp`: Enables OpenMP support for parallel processing
 
+## Install Dependencies
+
+- brew install llvm libomp
+
+## Build
+
+- /opt/homebrew/opt/llvm/bin/clang++ -O3 -march=native -funroll-loops -fopenmp My-GPT2.c -o main
+- ./ main
+
 ## Helpful Blogs
 
 - [Matrix Multiplication on CPU](https://marek.ai/matrix-multiplication-on-cpu.html)
